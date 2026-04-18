@@ -1,0 +1,9 @@
+Package: com.amar.hook
+Name: Amar Hook
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Advanced anti-debug and security bypass tweak
+Maintainer: Amar <amar@example.com>
+Author: Amar <amar@example.com>
+Section: Tweaks
+Depends: mobilesubstrate, firmware (>= 14.0)
