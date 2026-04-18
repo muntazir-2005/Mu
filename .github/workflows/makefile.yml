@@ -29,14 +29,15 @@ jobs:
       - name: Install dependencies
         run: brew install cmake openssl ldid
 
-      - name: Build Dobby (arm64/arm64e)
+      - name: Build Dobby (arm64 only)
         run: |
           git clone https://github.com/jmpews/Dobby.git
           cd Dobby
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;arm64e" \
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES="arm64" \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
             -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos -f clang) \
             -DCMAKE_CXX_COMPILER=$(xcrun --sdk iphoneos -f clang++)
