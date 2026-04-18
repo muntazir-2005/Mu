@@ -11,6 +11,11 @@
 #import <TargetConditionals.h>
 #import "fishhook.h"
 
+// تعريف PT_DENY_ATTACH يدويًا (غير موجود في iOS SDK)
+#ifndef PT_DENY_ATTACH
+#define PT_DENY_ATTACH 31
+#endif
+
 // ================== دوال التمويه ==================
 static inline void junk_code(void) {
     volatile int a = rand() % 100;
@@ -144,7 +149,7 @@ static void hook_objc_methods() {
     }
 }
 
-// ================== Constructor (يُستدعى عند تحميل المكتبة) ==================
+// ================== Constructor ==================
 __attribute__((constructor))
 static void init_hook() {
     srand((unsigned int)time(NULL));
