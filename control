@@ -1,9 +1,8 @@
 Package: com.yourcompany.universalhook
 Name: UniversalHook
 Version: 1.0
-Architecture: iphoneos-arm
+Architecture: darwin-amd64
 Description: User-Space API Spoofer with Dobby & fishhook
 Maintainer: Your Name
 Author: Your Name
 Section: System
-Tag: role::developer
