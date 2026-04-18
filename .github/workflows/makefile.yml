@@ -17,44 +17,30 @@ jobs:
         with:
           xcode-version: '15.4'
 
-      - name: Install dependencies
-        run: brew install cmake
-
-      - name: Patch and Build Dobby
+      - name: Build fishhook (lightweight)
         run: |
-          git clone https://github.com/jmpews/Dobby.git
-          cd Dobby
-          # إصلاح مشكلة CMake
-          sed -i '' 's/string(REGEX MATCH "arch=[a-zA-Z0-9_]*" arch_type ${arch_type})/string(REGEX MATCH "arch=[a-zA-Z0-9_]*" arch_type "${arch_type}")/' cmake/build_environment_check.cmake
-          sed -i '' 's/string(REGEX REPLACE "arch=\([a-zA-Z0-9_]*\)" "\\1" TARGET_ARCH ${TARGET_ARCH})/string(REGEX REPLACE "arch=\\([a-zA-Z0-9_]*\\)" "\\\\1" TARGET_ARCH "${TARGET_ARCH}")/' cmake/build_environment_check.cmake
-          mkdir build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_ARCHITECTURES="arm64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
-            -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos -f clang) \
-            -DCMAKE_CXX_COMPILER=$(xcrun --sdk iphoneos -f clang++)
-          make -j$(sysctl -n hw.ncpu)
+          git clone https://github.com/facebook/fishhook.git
+          cd fishhook
+          xcrun --sdk iphoneos clang -arch arm64 -c -o fishhook.o fishhook.c -miphoneos-version-min=14.0
+          ar rcs libfishhook.a fishhook.o
           cd ..
-          mkdir -p ../lib ../include
-          cp build/libdobby.a ../lib/
-          cp include/dobby.h ../include/
+          mkdir -p lib include
+          cp fishhook/libfishhook.a lib/
+          cp fishhook/fishhook.h include/
 
       - name: Build libamarhook.dylib
         run: |
-          # تجميع المكتبة
-          clang++ -arch arm64 -std=c++17 -O2 \
+          xcrun --sdk iphoneos clang++ -arch arm64 -std=c++17 -O2 \
             -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
             -miphoneos-version-min=14.0 \
             -dynamiclib \
             -framework Foundation -framework CoreFoundation -framework Security -framework LocalAuthentication -framework IOKit \
             -I./include \
-            -L./lib -ldobby -lssl -lcrypto \
+            -L./lib -lfishhook \
             -o libamarhook.dylib \
             amarhook.mm
 
-      - name: Upload dylib artifact
+      - name: Upload dylib
         uses: actions/upload-artifact@v4
         with:
           name: libamarhook-dylib
