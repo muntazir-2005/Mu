@@ -1,9 +1,7 @@
-name: Build UniversalHook with Theos
+name: Build UniversalHook with Theos (macOS)
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
@@ -17,7 +15,6 @@ jobs:
 
       - name: Setup Theos
         run: |
-          # تثبيت Theos إذا لم يكن موجوداً
           if [ ! -d "$HOME/theos" ]; then
             git clone --recursive https://github.com/theos/theos.git $HOME/theos
           fi
@@ -27,12 +24,8 @@ jobs:
       - name: Prepare dependencies (fishhook & Dobby)
         run: |
           mkdir -p include lib
-          
-          # استنساخ fishhook ونسخ الملف
           git clone --depth 1 https://github.com/facebook/fishhook.git
           cp fishhook/fishhook.h include/
-          
-          # استنساخ Dobby وبناؤه
           git clone --depth 1 https://github.com/jmpews/Dobby.git
           cd Dobby
           mkdir -p build && cd build
@@ -44,17 +37,15 @@ jobs:
 
       - name: Create required Theos files
         run: |
-          # إنشاء ملف control (مطلوب لـ Theos)
           cat > control << 'EOF'
           Package: com.yourcompany.universalhook
           Name: UniversalHook
           Version: 1.0
-          Architecture: iphoneos-arm
+          Architecture: darwin-arm64
           Description: User-Space API Spoofer with Dobby & fishhook
           Maintainer: Your Name
           Author: Your Name
           Section: System
-          Tag: role::developer
           EOF
 
       - name: Build dylib with Theos
