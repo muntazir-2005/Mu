@@ -1,0 +1,57 @@
+name: Build AmarHook (Theos)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.4'
+
+      - name: Install Theos
+        run: |
+          export THEOS=/opt/theos
+          sudo mkdir -p $THEOS
+          sudo chown $(whoami):staff $THEOS
+          git clone --recursive https://github.com/theos/theos.git $THEOS
+          echo "THEOS=$THEOS" >> $GITHUB_ENV
+          echo "$THEOS/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: brew install cmake openssl ldid
+
+      - name: Build Dobby (arm64/arm64e)
+        run: |
+          git clone https://github.com/jmpews/Dobby.git
+          cd Dobby
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;arm64e" \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+            -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos -f clang) \
+            -DCMAKE_CXX_COMPILER=$(xcrun --sdk iphoneos -f clang++)
+          make -j$(sysctl -n hw.ncpu)
+          cd ../..
+          mkdir -p lib include
+          cp Dobby/build/libdobby.a lib/
+          cp Dobby/include/dobby.h include/
+          cp -r Dobby/builtin-plugin include/ 2>/dev/null || true
+
+      - name: Build tweak
+        run: make package FINALPACKAGE=1
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: amarhook-deb
+          path: packages/*.deb
