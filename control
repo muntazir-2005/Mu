@@ -1,9 +1,9 @@
-Package: com.amar.hook
-Name: Amar Hook
-Version: 1.0.0
+Package: com.yourcompany.universalhook
+Name: UniversalHook
+Version: 1.0
 Architecture: iphoneos-arm
-Description: Advanced anti-debug and security bypass tweak
-Maintainer: Amar <amar@example.com>
-Author: Amar <amar@example.com>
-Section: Tweaks
-Depends: mobilesubstrate, firmware (>= 14.0)
+Description: User-Space API Spoofer with Dobby & fishhook
+Maintainer: Your Name
+Author: Your Name
+Section: System
+Tag: role::developer
