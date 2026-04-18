@@ -1,24 +1,30 @@
-# إعدادات البناء: استهداف أجهزة iOS/iPadOS بمعمارية arm64
-TARGET := iphoneos:clang:latest:15.0
-ARCHS = arm64
-DEBUG = 0
-FINALPACKAGE = 1
+# =========== Theos Makefile لبناء UniversalHook.dylib ===========
+TARGET := iphone:clang:latest:15.0
+INSTALL_TARGET_PROCESSES = SpringBoard
 
+# نحن لا نبني tweak بل مكتبة dylib فقط
 include $(THEOS)/makefiles/common.mk
 
-# بناء كمكتبة dylib عادية لتكون جاهزة للحقن في الـ IPA
-LIBRARY_NAME = iPadSpoofer
+# اسم المكتبة الناتجة
+LIBRARY_NAME = UniversalHook
 
-# ملفات الكود الخاصة بك
-iPadSpoofer_FILES = Spoofer.m fishhook.c
+# ملفات المصدر
+UniversalHook_FILES = UniversalHook.mm
 
-# إعدادات المترجم
-iPadSpoofer_CFLAGS = -fobjc-arc -I./include
+# إطارات النظام المطلوبة
+UniversalHook_FRAMEWORKS = Foundation AppKit
 
-# استخدام UIKit للآيباد بدلاً من AppKit
-iPadSpoofer_FRAMEWORKS = Foundation UIKit
+# مكتبات خاصة
+UniversalHook_LIBRARIES = dobby
 
-# ربط مكتبة Dobby الخاصة بـ iOS/arm64
-iPadSpoofer_LDFLAGS = -L./lib -ldobby
+# مسارات البحث عن ملفات الرأس والمكتبات
+UniversalHook_CFLAGS = -I./include -std=c++17 -O2
+UniversalHook_LDFLAGS = -L./lib
 
+# نوع الهدف: مكتبة ديناميكية
 include $(THEOS_MAKE_PATH)/library.mk
+
+# بعد البناء، انسخ المكتبة إلى المجلد الجذر (اختياري)
+after-all::
+	@echo "[+] UniversalHook.dylib built at: .theos/obj/UniversalHook.dylib"
+	@cp .theos/obj/UniversalHook.dylib ./ 2>/dev/null || true
