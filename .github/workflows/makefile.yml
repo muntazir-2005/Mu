@@ -1,4 +1,4 @@
-name: Build AmarHook (Theos)
+name: Build libamarhook.dylib
 
 on:
   push:
@@ -17,22 +17,16 @@ jobs:
         with:
           xcode-version: '15.4'
 
-      - name: Install Theos
-        run: |
-          export THEOS=/opt/theos
-          sudo mkdir -p $THEOS
-          sudo chown $(whoami):staff $THEOS
-          git clone --recursive https://github.com/theos/theos.git $THEOS
-          echo "THEOS=$THEOS" >> $GITHUB_ENV
-          echo "$THEOS/bin" >> $GITHUB_PATH
-
       - name: Install dependencies
-        run: brew install cmake openssl ldid
+        run: brew install cmake
 
-      - name: Build Dobby (arm64 only)
+      - name: Patch and Build Dobby
         run: |
           git clone https://github.com/jmpews/Dobby.git
           cd Dobby
+          # إصلاح مشكلة CMake
+          sed -i '' 's/string(REGEX MATCH "arch=[a-zA-Z0-9_]*" arch_type ${arch_type})/string(REGEX MATCH "arch=[a-zA-Z0-9_]*" arch_type "${arch_type}")/' cmake/build_environment_check.cmake
+          sed -i '' 's/string(REGEX REPLACE "arch=\([a-zA-Z0-9_]*\)" "\\1" TARGET_ARCH ${TARGET_ARCH})/string(REGEX REPLACE "arch=\\([a-zA-Z0-9_]*\\)" "\\\\1" TARGET_ARCH "${TARGET_ARCH}")/' cmake/build_environment_check.cmake
           mkdir build && cd build
           cmake .. \
             -DCMAKE_BUILD_TYPE=Release \
@@ -42,17 +36,26 @@ jobs:
             -DCMAKE_C_COMPILER=$(xcrun --sdk iphoneos -f clang) \
             -DCMAKE_CXX_COMPILER=$(xcrun --sdk iphoneos -f clang++)
           make -j$(sysctl -n hw.ncpu)
-          cd ../..
-          mkdir -p lib include
-          cp Dobby/build/libdobby.a lib/
-          cp Dobby/include/dobby.h include/
-          cp -r Dobby/builtin-plugin include/ 2>/dev/null || true
+          cd ..
+          mkdir -p ../lib ../include
+          cp build/libdobby.a ../lib/
+          cp include/dobby.h ../include/
 
-      - name: Build tweak
-        run: make package FINALPACKAGE=1
+      - name: Build libamarhook.dylib
+        run: |
+          # تجميع المكتبة
+          clang++ -arch arm64 -std=c++17 -O2 \
+            -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
+            -miphoneos-version-min=14.0 \
+            -dynamiclib \
+            -framework Foundation -framework CoreFoundation -framework Security -framework LocalAuthentication -framework IOKit \
+            -I./include \
+            -L./lib -ldobby -lssl -lcrypto \
+            -o libamarhook.dylib \
+            amarhook.mm
 
-      - name: Upload .deb
+      - name: Upload dylib artifact
         uses: actions/upload-artifact@v4
         with:
-          name: amarhook-deb
-          path: packages/*.deb
+          name: libamarhook-dylib
+          path: libamarhook.dylib
