@@ -1,47 +1,69 @@
-name: Build libamarhook.dylib
+name: Build UniversalHook with Theos
 
 on:
   push:
+    branches: [ "main" ]
+  pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '15.4'
-
-      - name: Build fishhook (lightweight)
+      - name: Setup Theos
         run: |
-          git clone https://github.com/facebook/fishhook.git
-          cd fishhook
-          xcrun --sdk iphoneos clang -arch arm64 -c -o fishhook.o fishhook.c -miphoneos-version-min=14.0
-          ar rcs libfishhook.a fishhook.o
-          cd ..
-          mkdir -p lib include
-          cp fishhook/libfishhook.a lib/
+          # تثبيت Theos إذا لم يكن موجوداً
+          if [ ! -d "$HOME/theos" ]; then
+            git clone --recursive https://github.com/theos/theos.git $HOME/theos
+          fi
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          echo "$HOME/theos/bin" >> $GITHUB_PATH
+
+      - name: Prepare dependencies (fishhook & Dobby)
+        run: |
+          mkdir -p include lib
+          
+          # استنساخ fishhook ونسخ الملف
+          git clone --depth 1 https://github.com/facebook/fishhook.git
           cp fishhook/fishhook.h include/
+          
+          # استنساخ Dobby وبناؤه
+          git clone --depth 1 https://github.com/jmpews/Dobby.git
+          cd Dobby
+          mkdir -p build && cd build
+          cmake .. -DDOBBY_GENERATE_SHARED=OFF -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.ncpu)
+          cd ../..
+          cp Dobby/include/dobby.h include/
+          cp Dobby/build/libdobby.a lib/
 
-      - name: Build libamarhook.dylib
+      - name: Create required Theos files
         run: |
-          xcrun --sdk iphoneos clang++ -arch arm64 -std=c++17 -O2 \
-            -isysroot $(xcrun --sdk iphoneos --show-sdk-path) \
-            -miphoneos-version-min=14.0 \
-            -dynamiclib \
-            -framework Foundation -framework CoreFoundation -framework Security -framework LocalAuthentication -framework IOKit \
-            -I./include \
-            -L./lib -lfishhook \
-            -o libamarhook.dylib \
-            amarhook.mm
+          # إنشاء ملف control (مطلوب لـ Theos)
+          cat > control << 'EOF'
+          Package: com.yourcompany.universalhook
+          Name: UniversalHook
+          Version: 1.0
+          Architecture: iphoneos-arm
+          Description: User-Space API Spoofer with Dobby & fishhook
+          Maintainer: Your Name
+          Author: Your Name
+          Section: System
+          Tag: role::developer
+          EOF
 
-      - name: Upload dylib
+      - name: Build dylib with Theos
+        run: |
+          make clean
+          make
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: libamarhook-dylib
-          path: libamarhook.dylib
+          name: UniversalHook.dylib
+          path: .theos/obj/UniversalHook.dylib
